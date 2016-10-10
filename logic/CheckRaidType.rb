@@ -5,4 +5,18 @@
 #
 #Version 1.0 
 #
-#
+
+
+class CheckRaidType
+    def initialize()
+    @@raidTypeArray = Array.new
+    end
+
+    def getRaidType
+    @@raidTypeArray = `sudo hpacucli ctrl slot=0 pd all show status`
+    end
+end
+#sudo: hpacucli: command not found
+test = CheckRaidType.new
+
+puts test.getRaidType
