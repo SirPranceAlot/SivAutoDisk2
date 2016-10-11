@@ -14,11 +14,9 @@ class InfoGatherer
 
 
     def getHostName
-        puts "#{@@hostname}"
+        return @@hostname
     end
 end
 
-d = InfoGatherer.new
 
-d.getHostName
 
