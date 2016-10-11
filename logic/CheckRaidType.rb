@@ -9,24 +9,37 @@
 
 class CheckRaidType
     def initialize()
-    @@raidTypeArray = Array.new
-    @@cleanRaidTypeArray = Array.new
+        @@raidTypeArray = Array.new
+        @@cleanRaidTypeArray = Array.new
     end
 
 
-#get raid type
+    #method to determine the raid type
 
     def getRaidType
-    #tries hpacucli command and cleans the output of leading/trailing whitelines
-    #and empty elements
-    @@raidTypeArray = `sudo hpacucli ctrl slot=0 pd all show status`
-    @@raidTypeArray.each do |i|
-    @@cleanRaidTypeArray.push(i.strip)
-    @@cleanRaidTypeArray.delete_if { |x| x.empty? }
-    end
-    #check if raid type is HP (right now it only checks for HP later
-    #checks for different raid type will be added in the future)
-    puts @@cleanRaidTypeArray.length
+	#begin exception handling for method
+	begin
+        #tries hpacucli command and cleans the output of leading/trailing whitelines
+        #and empty elements
+        @@raidTypeArray = `sudo hpacucli ctrl slot=0 pd all show status`
+        @@raidTypeArray.each do |i|
+        @@cleanRaidTypeArray.push(i.strip)
+        @@cleanRaidTypeArray.delete_if { |x| x.empty? }
+        end
+        #check if raid type is HP 
+        #(right now it only checks for HP later checks for different raid type will be added in the future)
+        if @@cleanRaidTypeArray[0] =~ /physicaldrive 1I:1:1/ then
+	   #declare HP raid array match
+	   puts "HP raid type found!"
+	else
+	   puts "Raid type not recognized!"
+	end
+ 
+        rescue
+	    puts "Something went wrong in CheckRaidType.getRaidType\n\n\n"
+	    puts exception.backtrace
+	    raise
+	end
     end
 
 
