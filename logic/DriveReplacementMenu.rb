@@ -1,9 +1,19 @@
 #!usr/bin/ruby
 #
-#
-puts "SivAuto Disk 2"
+#declaring required classes
+require "CheckRaidType"
+require "InfoGatherer"
+
+class DriveReplacementMenu
+#initializing classes to variables
+checkRaidType = CheckRaidType.new
+info  = InfoGatherer.new
+
+puts "~~SivAutoDisk 2~~\n\n"
 puts "This script is for automating disk replacements."
-puts "Hostname:"
-puts "Disk(s) detected requireing repair:"
+puts "Hostname: " + info.getHostName
+puts "Disk(s) detected requiring repair:"
 puts "System type:"
-puts "Raid type:"
+puts "Raid type: " + checkRaidType.getRaidType
+end
+

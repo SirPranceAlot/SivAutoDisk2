@@ -3,8 +3,8 @@
 #
 #This script is part of SivAutoDisk2 and checks the raid type of the system.
 #
-#Version 1.0 
-#
+#~Methods~
+#getRaidType *Return the raid type name*
 
 
 class CheckRaidType
@@ -26,13 +26,13 @@ class CheckRaidType
         @@cleanRaidTypeArray.push(i.strip)
         @@cleanRaidTypeArray.delete_if { |x| x.empty? }
         end
-        #check if raid type is HP 
+        #check if raid type is HP by checking the first element of array
         #(right now it only checks for HP later checks for different raid type will be added in the future)
         if @@cleanRaidTypeArray[0] =~ /physicaldrive 1I:1:1/ then
 	   #declare HP raid array match
-	   puts "HP raid type found!"
+	   return "HP"
 	else
-	   puts "Raid type not recognized!"
+	   return "Raid type not recognized!"
 	end
  
         rescue
@@ -49,5 +49,5 @@ end
 
 
 #sudo: hpacucli: command not found
-test = CheckRaidType.new
-test.getRaidType
+#test = CheckRaidType.new
+#test.getRaidType
