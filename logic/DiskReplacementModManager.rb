@@ -16,16 +16,23 @@ class DiskReplacementModManager
    #initialize object and gets a list of available modules, the module has to match the naming format stated
    #above
    def initialize
-     @@availableModules = Array.new 
+     @@availableModules = Array.new
+     @@cleanAvailableModules = Array.new 
      @@availableModules = `ls | grep Module`
-     puts @@availableModules
+     @@availableModules.each do |m|
+     #removes "Module.rb" from availableModules array and put new values in clean array
+     @@cleanAvailableModules.push(m.chomp.gsub(/Module.rb/,"").downcase)
+     #removes empty values
+     @@cleanAvailableModules.reject! {|e| e.empty?}
+     end
+     puts @@cleanAvailableModules
    end
    
    #checks if there is a module available for the raid type
    def checkModuleAvailable
-   @@availableModules.each do |m|
+   @@cleanAvailableModules.each do |m|
    if m.chomp.eql? @@raidType.getRaidType
-   puts "ok"
+   #will put code to use the module here
    end
    end
    end
