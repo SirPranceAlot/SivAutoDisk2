@@ -30,7 +30,7 @@ class CheckRaidType
         #(right now it only checks for HP later checks for different raid type will be added in the future)
         if @@cleanRaidTypeArray[0] =~ /physicaldrive 1I:1:1/ then
 	   #declare HP raid array match
-	   return "HP"
+	   return "hpacucli"
 	else
 	   return "Raid type not recognized!"
 	end

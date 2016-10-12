@@ -5,11 +5,10 @@
 #Gets the current directory to be added to $LOAD_PATH
 #need this in order to import classes from the logic folder
 currentDirectory = `pwd`
-currentDirectory = currentDirectory.strip + "/logic"
+currentDirectory = currentDirectory.chomp + "/logic"
 
 #Adds the logic directory to $LOAD_PATH
-$LOAD_PATH << File.dirname(currentDirectory.strip + "/logic")
-puts $LOAD_PATH
+$LOAD_PATH << File.dirname(currentDirectory + "/logic")
 
 #importing classes
 require "DriveReplacementMenu"
@@ -18,3 +17,6 @@ require "DriveReplacementMenu"
 menu = DriveReplacementMenu.new
 #display menu
 menu.displayMenu
+
+
+
