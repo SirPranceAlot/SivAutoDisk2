@@ -20,4 +20,3 @@ class DriveReplacementMenu
     puts "Raid type: " + checkRaidType.getRaidType
     end
 end
-
