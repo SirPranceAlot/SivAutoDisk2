@@ -15,7 +15,7 @@ class DriveReplacementMenu
     puts "~~SivAutoDisk 2~~\n\n"
     puts "This script is for automating disk replacements."
     puts "Hostname: " + info.getHostName
-    puts "Disk(s) detected requiring repair:"
+    puts "Disk(s) statuses : "
     puts "System type: " + info.getSystemType
     puts "Raid type: " + checkRaidType.getRaidType
     end
