@@ -50,4 +50,4 @@ end
 
 #sudo: hpacucli: command not found
 #test = CheckRaidType.new
-#test.getRaidType
+#puts test.getRaidType

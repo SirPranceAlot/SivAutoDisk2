@@ -3,7 +3,6 @@
 #Module to check for failed drives on hpacucli servers and partition them if necessary.
 #It inherits from the Module superclass.
 
-
 class HpacucliModule < Module
 
     def initialize
@@ -14,12 +13,12 @@ class HpacucliModule < Module
 	@unmountedDrives = Array.new
     end
 
-#get a lits of failed drives, cleans the list up a little, gets the drive number, the hp drive number format, and the status message for the drive
-    def checkFailedPhysicalDrives
+#get a lits of failed drives, cleans the list up a little, gets the drive number, the hp drive number format, and the status message for the drive. Also calls checkFailedLogicalDrives
+    def checkFailedDrives
 	@failedPhysicalDrives = `sudo hpacucli ctrl slot=0 pd all show status`
 	@cleanFailedPhysicalDrives = Array.new
 	@failedPhysicalDrives.each do |e|
-            @cleanFailedPhysicalDrives.push(e.chomp)
+        @cleanFailedPhysicalDrives.push(e.chomp)
         end
 	@cleanFailedPhysicalDrives.reject! {|e| e.empty?}
 
@@ -34,6 +33,8 @@ class HpacucliModule < Module
 		end
 	    end
         end
+       #checks logical drives
+       self.checkFailedLogicalDrives
     end
 
 #get list of failed logical drives
@@ -58,19 +59,21 @@ class HpacucliModule < Module
 	       end	
            end
        end
-       puts @failedLogicalDrives
     end
-
+	
+    #display failed drive for use with menu
     def displayFailedDrives
-
-
+	self.checkFailedDrives
+        @failedHpDriveAndStatus.each do |drive, status|
+	    puts "Physical Drive: #{drive} Status: #{status}"
+	end
+	
+	@failedLogicalDrives.each do |l|
+	   puts "Logical Drive: #{l} Status: Failed"
+	end
 
     end
 
 
 end
 
-
-test = HpacucliModule.new
-
-test.checkFailedLogicalDrives

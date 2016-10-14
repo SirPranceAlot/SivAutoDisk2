@@ -3,6 +3,7 @@
 #
 #This is part of SivAutoDisk2. This script is for gathering system info. 
 
+
 class InfoGatherer
     
     def initialize()
@@ -21,7 +22,23 @@ class InfoGatherer
 	@@systemType = @@systemType.strip.chomp.gsub(/Product Name: /,"")	
 	return @@systemType
     end
+    #retrieves and return the raid type
+    def getRaidType
+        require "CheckRaidType"
+        raidType = CheckRaidType.new
+	return raidType.getRaidType
+    end
+
+    #retrieves failed drives for display
+    def getFailedDrives
+       require "DiskReplacementModManager"
+       failedDrives = DiskReplacementModManager.new
+       failedDrives.displayModuleFailedDisks
+
+    end
+
 end
 
-
+#test = InfoGatherer.new
+#test.getFailedDrives
 
