@@ -25,22 +25,28 @@ class DiskReplacementModManager
      #removes empty values
      @@cleanAvailableModules.reject! {|e| e.empty?}
      end
-     puts @@cleanAvailableModules
+     #import all mods
    end
    
    #checks if there is a module available for the raid type
    def checkModuleAvailable
-   @@cleanAvailableModules.each do |m|
-   if m.chomp.eql? @@raidType.getRaidType
-   #will put code to use the module here
+       @@cleanAvailableModules.each do |m|
+           if m.chomp.eql? @@raidType.getRaidType
+              puts "#{m} raid module is available."
+	      return true
+           end
+       end
    end
+   #display failed disks according to the module
+   def displayModuleFailedDisks
+      @chosenModule = @@raidType.getRaidType.capitalize + "Module"
+      require @chosenModule
+      display = HpacucliModule.new
+      display.displayFailedDrives
    end
-   end
+
 
 end
 
-test = DiskReplacementModManager.new
-
-test.checkModuleAvailable
 
 
