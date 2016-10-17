@@ -1,7 +1,7 @@
 #!usr/bin/ruby
 #
 #
-#This is part of SivAutoDisk2. This script is for gathering system info. 
+#This is part of SivAutoDisk2. This script is for gathering system info. It utilizes CheckRaidType class and the DiskReplacementModManager class for information.
 
 
 class InfoGatherer
@@ -30,15 +30,21 @@ class InfoGatherer
     end
 
     #retrieves failed drives for display
+    def getDisplayFailedDrives
+       require "DiskReplacementModManager"
+       @failedDrivesDisplay = DiskReplacementModManager.new
+       @failedDrivesDisplay.displayModuleFailedDisks
+    end
+
+    #retreive failed drive for use with other scrips
     def getFailedDrives
        require "DiskReplacementModManager"
-       failedDrives = DiskReplacementModManager.new
-       failedDrives.displayModuleFailedDisks
-
+       @failedDrives = DiskReplacementModManager.new
+       @failedDrives.getFailedDisks
     end
 
 end
 
 #test = InfoGatherer.new
-#test.getFailedDrives
+#puts test.getFailedDrives
 
