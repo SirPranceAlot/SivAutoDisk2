@@ -48,17 +48,26 @@ class DiskReplacementModManager
 
    #get failed disks according to module for use with other classes
    def getFailedDisks
-      if self.checkModuleAvailable == true  then
 	  @module = @@raidType.getRaidType.capitalize + "Module"
           require @module
           @module = Module.const_get(@module)
           @module = @module.new
           return @module.getFailedPhysicalDrives
-      end
    end
+
+   #start drive replacement process for modole
+   def startDriveReplacementProcessForModule
+      @module = @@raidType.getRaidType.capitalize + "Module"
+      require @module
+      @module = Module.const_get(@module)
+      @module = @module.new
+      @module.driveReplacementProcess
+   end
+
+
 
 end
 
 #test = DiskReplacementModManager.new
-#test.getFailedDisks
+#test.startDriveReplacementProcessForModule
 
