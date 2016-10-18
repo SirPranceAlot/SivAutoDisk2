@@ -28,25 +28,46 @@ class DiskReplacementModManager
      #import all mods
    end
    
-   #checks if there is a module available for the raid type
+   #checks if there is a module available for the raid type and stores module name
    def checkModuleAvailable
        @@cleanAvailableModules.each do |m|
            if m.chomp.eql? @@raidType.getRaidType
-              puts "#{m} raid module is available."
 	      return true
+	   else puts "No available modules"
            end
        end
    end
    #display failed disks according to the module
    def displayModuleFailedDisks
-      @chosenModule = @@raidType.getRaidType.capitalize + "Module"
-      require @chosenModule
-      display = HpacucliModule.new
-      display.displayFailedDrives
+	 @module = @@raidType.getRaidType.capitalize + "Module" 
+         require @module
+         @module = Module.const_get(@module)
+         @module = @module.new
+         @module.displayFailedDrives
    end
+
+   #get failed disks according to module for use with other classes
+   def getFailedDisks
+	  @module = @@raidType.getRaidType.capitalize + "Module"
+          require @module
+          @module = Module.const_get(@module)
+          @module = @module.new
+          return @module.getFailedPhysicalDrives
+   end
+
+   #start drive replacement process for modole
+   def startDriveReplacementProcessForModule
+      @module = @@raidType.getRaidType.capitalize + "Module"
+      require @module
+      @module = Module.const_get(@module)
+      @module = @module.new
+      @module.driveReplacementProcess
+   end
+
 
 
 end
 
-
+#test = DiskReplacementModManager.new
+#test.startDriveReplacementProcessForModule
 
