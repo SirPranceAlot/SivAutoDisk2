@@ -130,6 +130,13 @@ class HpacucliModule < Module
         self.waitDriveReplace
         #confirm all physical drives are ok
         self.confirmPhysicalDrive
+	#reenabling failed logical drives
+	self.confirmLogicalDrive
+	#partition failed drives
+	#self.failedDrivePartition
+	#instantiate fstabhandler
+	dmFstabHandler = DatamineFstabHandler.new
+	dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
     end
 
     #unmount failed drives
@@ -204,6 +211,58 @@ class HpacucliModule < Module
 
 	end
      end
+
+     #confirmLD are OK and reenable if not
+     def confirmLogicalDrive
+	logicalDrivesList = Array.new
+	logicalDrivesList = `sudo hpacucli ctrl slot=0 ld all show status`
+	cleanLogicalDrivesList = Array.new
+	#puts a clean list in cleanLogicalDrivesList without \n
+	logicalDrivesList.each do |l|
+	   cleanLogicalDrivesList.push(l.chomp)
+	end
+	#remove empty strings in cleanLogicalDrivesList
+	cleanLogicalDrivesList.reject! {|e| e.empty?}
+        puts "Re-enabling any failed logical drives..."
+	#reenable failed LDs
+	cleanLogicalDrivesList.each do |l|
+	   if l =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	      `sudo hpacucli ctrl slot=0 ld #{$1} modify reenable forced` 
+	      puts "Logical drive: #{$1} re-enabled."
+	   end 
+	end
+	
+	#confirm all logical drive OK
+	puts "Confirming all logical drives are OK..."
+	logicalDrivesOk = true
+	cleanLogicalDrivesList.each do |c|
+	   if c =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	      logicalDrivesOk = false
+	   end
+	end
+	
+	if logicalDrivesOk == true then
+	   puts "All logical drives OK!"
+	else
+	   abort("Not all logical drives could be enabled... aborting.")
+	end
+     end
+
+     #partition failed drives based on @drivesReplaced
+     def failedDrivePartition
+	#creating hash for filesystem letters
+	fsLetters = Hash.new
+	fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
+	#parition failed drives
+	@drivesReplaced.each do |p|
+	   puts "Paritioning drive #{p}..."
+	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mklabel gpt`
+	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
+	   `sudo mkfs.ext4 /dev/#{fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
+	end
+     end
+
+
 
      #check if datamine services are on
      def checkServices
