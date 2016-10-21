@@ -4,6 +4,7 @@
 #It inherits from the Module superclass.
 
 require "DatamineFstabHandler"
+require "set"
 
 class HpacucliModule < Module
 
@@ -117,6 +118,9 @@ class HpacucliModule < Module
 
     #start driveReplacementProcess
     def driveReplacementProcess
+	#check datamine services
+	self.checkServices
+
  	self.checkFailedDrives
 	#unmounting failed drives
         self.umountFailedDrives	
@@ -124,7 +128,15 @@ class HpacucliModule < Module
         self.turnOnFailedDrivesLED
 	#waiting for drive replacement confirmation
         self.waitDriveReplace
-        
+        #confirm all physical drives are ok
+        self.confirmPhysicalDrive
+	#reenabling failed logical drives
+	self.confirmLogicalDrive
+	#partition failed drives
+	#self.failedDrivePartition
+	#instantiate fstabhandler
+	dmFstabHandler = DatamineFstabHandler.new
+	dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
     end
 
     #unmount failed drives
@@ -146,21 +158,143 @@ class HpacucliModule < Module
        puts "Please replace: "
        @failedPhysicalDrives.each {|d| puts "Drive: " + d}
        #array to store the number for the drives replaced
-       @drivesReplaced = Array.new
-       @input = 0
-       while @input.to_i > 12 || @input.to_i < 1 do
-          print "Once the drive(s) have been replaced please enter their drive numbers separated by commas[enter x to exit]; e.g. 2,6: "
+       @drivesReplaced = Set.new
+       #true/false to exit loop
+       @doneInputtingDrives = false
+       while @doneInputtingDrives == false do
+          print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers]: "
           @input = gets.chomp
+	  #check if number is between 1-12 if so put into @drivesReplaced array
+	  if @input.to_i > 12 || @input.to_i < 1 && @input != "x" then
+	     puts "Please enter a number between 1-12"
+	  elsif @input.to_i < 12 || @input.to_i > 0
+	     @drivesReplaced.add(@input.to_i)
+ 	  end
+
+          #exit loop
 	  if @input == "x" then
-	     abort("Exiting...")
+	     @doneInputtingDrives = true
+	     @drivesReplaced.delete(0)
 	  end
        end
-       
-    end
+     end
 
 
+     #makes sure all physical drives are "OK"
+     def confirmPhysicalDrive
+	puts "Confirming all physical drives are OK..."
+	physicalDrivesList = Array.new
+        physicalDrivesList = `sudo hpacucli ctrl slot=0 pd all show status`	
+	cleanPhysicalDrivesList = Array.new
+	physicalDiskStatuses = Array.new
+        #puts a clean list in cleanPhysicalDrivesList without \n
+	physicalDrivesList.each do |d|
+ 	   cleanPhysicalDrivesList.push(d.chomp)
+	end
+	#remove empty strings in cleanPhysicalDrivesList
+	cleanPhysicalDrivesList.reject! {|e| e.empty?}
+	#adds any failed or predictivefailure disks in the @physicalDiskStatuses array
+        cleanPhysicalDrivesList.each do |c|
+	   if c =~ /\w+ (\S+) \(port 1I:box 1:bay (\d), \S* GB\): (\w+)/ then
+	      if $3 == "Failed" || $3 == "Predictive Failure" then
+		 physicalDiskStatuses.add("Drive #{$2} status not OK")
+	      end
+	   end
+	end
+	#if @physicalDiskStatuses is empty then all physical disks are ok
+	if physicalDiskStatuses.empty?  then
+	    puts "All physical drive statuses are OK!"
+	else
+	#if not, abort program
+	    puts physicalDiskStatuses
+            abort("Not all drive statuses are OK, aborting... please rerun script as needed.")
+
+	end
+     end
+
+     #confirmLD are OK and reenable if not
+     def confirmLogicalDrive
+	logicalDrivesList = Array.new
+	logicalDrivesList = `sudo hpacucli ctrl slot=0 ld all show status`
+	cleanLogicalDrivesList = Array.new
+	#puts a clean list in cleanLogicalDrivesList without \n
+	logicalDrivesList.each do |l|
+	   cleanLogicalDrivesList.push(l.chomp)
+	end
+	#remove empty strings in cleanLogicalDrivesList
+	cleanLogicalDrivesList.reject! {|e| e.empty?}
+        puts "Re-enabling any failed logical drives..."
+	#reenable failed LDs
+	cleanLogicalDrivesList.each do |l|
+	   if l =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	      `sudo hpacucli ctrl slot=0 ld #{$1} modify reenable forced` 
+	      puts "Logical drive: #{$1} re-enabled."
+	   end 
+	end
+	
+	#confirm all logical drive OK
+	puts "Confirming all logical drives are OK..."
+	logicalDrivesOk = true
+	cleanLogicalDrivesList.each do |c|
+	   if c =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	      logicalDrivesOk = false
+	   end
+	end
+	
+	if logicalDrivesOk == true then
+	   puts "All logical drives OK!"
+	else
+	   abort("Not all logical drives could be enabled... aborting.")
+	end
+     end
+
+     #partition failed drives based on @drivesReplaced
+     def failedDrivePartition
+	#creating hash for filesystem letters
+	fsLetters = Hash.new
+	fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
+	#parition failed drives
+	@drivesReplaced.each do |p|
+	   puts "Paritioning drive #{p}..."
+	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mklabel gpt`
+	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
+	   `sudo mkfs.ext4 /dev/#{fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
+	end
+     end
+
+
+
+     #check if datamine services are on
+     def checkServices
+	puts "Checking datamine services..."
+	#check datanode status
+	datanodeStatus = `sudo service datanode status`
+	datanodeStatus.chomp
+	#ask to continue if service is started else abort
+	if datanodeStatus =~ /(\S+) \S+ \S+ \S+ \S+ STARTED/
+	   puts "#{$1} service status is running, do you want to continue? y/n"
+	   input = gets
+	   input.chomp.downcase
+	   if input != "y" then
+	   abort("Aborting...")
+	   end
+	end
+
+	#check tasktracker status
+	tasktrackerStatus = `sudo service tasktracker status`
+	tasktrackerStatus.chomp
+	#ask to continue if service is started else abort
+	if tasktrackerStatus =~ /(\S+) \S+ \S+ \S+ \S+ STARTED/ then
+	   puts "#{$1} service status is running, do you want to continue? y/n"
+	   input = gets
+	   input.chomp.downcase
+	   if input != "y" then
+	   abort("Aborting...")
+	   end
+	
+	end
+     end
 end
-
 
 #test = HpacucliModule.new
 #test.driveReplacementProcess
