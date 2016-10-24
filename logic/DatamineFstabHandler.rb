@@ -16,10 +16,10 @@ class DatamineFstabHandler
 
 
 
-   #check if fstab is using UUID for failed disks
+   #check if fstab is using UUID for failed disks, returns the list of the disks that uses UUID
    def checkIfDiskUseUUID(failedDisks)
       puts "Checking if replaced disks uses UUID in /etc/fstab..."
-      File.open("/home/slimvipuwat/SivAutoDisk2/logic/fstab2").each do |line|
+      File.open("/home/slimvipuwat/SivAutoDisk2/logic/fstabUuidTest").each do |line|
          failedDisks.each do |diskNumber|
              if line =~ /\S+ (\/hadoop#{diskNumber})/ then
 	        #check if matched disks uses UUID
@@ -36,9 +36,58 @@ class DatamineFstabHandler
              end
          end
       end
+      return @listOfFailedDisksUsingUUID
    end 
-            
-      #device is busy 
+
+   #collect new uuid for diskUsingUuid and put in diskUuid hash containing (diskNumber=newuuid), takes an array of the failed disk using UUID and the hash of the disk name and number on the server
+   def replaceUuid(diskUsingUuid, diskHash)
+      #create hash to store disk UUID
+      diskUuid = Hash.new
+      #stores the disk number and the UUID belonging to that disk in diskUuid hash
+      blkidOutput = `sudo blkid | sort`
+      blkidOutput.each do |line|
+	 if line =~ /\/dev\/(\w+)1: \S+ UUID="(\S+)"/ then
+	    diskUsingUuid.each do |disk|
+	       #disk the disk name matches with the name in the blkid then add disk number and uuid to diskUuid
+	       if diskHash.index(disk) == $1
+		  diskUuid[disk] = $2
+	       end
+	    end
+	 end 
+      end
+      
+      #start creating new updated fstab file here
+
+      #open new and old file
+      oldFstab = File.open("/home/slimvipuwat/SivAutoDisk2/logic/fstabUuidTest", "r")
+      newFstab = File.new("/home/slimvipuwat/SivAutoDisk2/logic/fstabNewTest","w+")
+      #line added logic to not place duplicate line if a blkid match has occured
+      lineAdded = false
+      #check each line of old file
+      oldFstab.each do |line|
+	 #if line has hadoop label check it against diskUuid list
+         if line =~ /\S+ \/[a-z]+(\d)/ then
+	    diskUuid.each do |k,v|
+		#if diskUuid disk number matches with the hadoop label number add the new uuid and set lineAdded true
+	        if "#{$1}" == "#{k}" then
+                    newFstab.puts("UUID=#{v} /hadoop#{k}                ext4    rw,noatime      1 2")
+		    lineAdded = true
+                end
+            end
+	 end
+	 #if line was not already added then put the line in the new file
+	 if lineAdded == false then
+	     newFstab.puts(line)
+	 end
+         #reset lineAdded varible to false
+         lineAdded = false
+      end
+   end
+
+
+
+   
+              
 end
 
 

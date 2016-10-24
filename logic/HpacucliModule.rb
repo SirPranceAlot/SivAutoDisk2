@@ -133,10 +133,13 @@ class HpacucliModule < Module
 	#reenabling failed logical drives
 	self.confirmLogicalDrive
 	#partition failed drives
-	#self.failedDrivePartition
+	self.failedDrivePartition
 	#instantiate fstabhandler
 	dmFstabHandler = DatamineFstabHandler.new
-	dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
+	#check if failed drives uses uuid
+	diskUsingUuid = dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
+	#replace uuid
+	dmFstabHandler.replaceUuid(diskUsingUuid, @fsLetters)
     end
 
     #unmount failed drives
@@ -251,15 +254,17 @@ class HpacucliModule < Module
      #partition failed drives based on @drivesReplaced
      def failedDrivePartition
 	#creating hash for filesystem letters
-	fsLetters = Hash.new
-	fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
+	@fsLetters = Hash.new
+	@fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
 	#parition failed drives
+=begin
 	@drivesReplaced.each do |p|
 	   puts "Paritioning drive #{p}..."
 	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mklabel gpt`
 	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
 	   `sudo mkfs.ext4 /dev/#{fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
 	end
+=end
      end
 
 
