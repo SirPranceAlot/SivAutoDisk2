@@ -26,6 +26,7 @@ class HpacucliModule < Module
 	    @failedPhysicalDrives.push(line)
 	end
 	#-------------------------------------------TEST
+	
 	#@failedPhysicalDrives = `sudo hpacucli ctrl slot=0 pd all show status`
 	@cleanFailedPhysicalDrives = Array.new
 	@failedPhysicalDrives.each do |e|
@@ -78,14 +79,19 @@ class HpacucliModule < Module
     #display failed drive for use with menu
     def displayFailedDrives
 	self.checkFailedDrives
-        @failedHpDriveAndStatus.each do |drive, status|
-	   @displayOutput.push("Physical Drive: #{drive} Status: #{status}")
-	end
+	if @failedHpDriveAndStatus.length > 0 then
+           @failedHpDriveAndStatus.each do |drive, status|
+	      @displayOutput.push("Physical Drive: #{drive} Status: #{status}")
+	   end
 	
-	@failedLogicalDrives.each do |l|
-	   @displayOutput.push("Logical Drive: #{l} Status: Failed")
-	end
-       return @displayOutput
+	   @failedLogicalDrives.each do |l|
+	      @displayOutput.push("Logical Drive: #{l} Status: Failed")
+	   end
+           return @displayOutput
+	else
+	   #exit if no failed drives found 
+	   abort("No failed drives found.")
+        end
     end
 
     #getFailedPhysicalDrives for use with other classes
@@ -133,10 +139,15 @@ class HpacucliModule < Module
 	#reenabling failed logical drives
 	self.confirmLogicalDrive
 	#partition failed drives
-	#self.failedDrivePartition
+	self.failedDrivePartition
 	#instantiate fstabhandler
 	dmFstabHandler = DatamineFstabHandler.new
-	dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
+	#check if failed drives uses uuid
+	diskUsingUuid = dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
+	#replace uuid if there are drives that use uuid
+	dmFstabHandler.replaceUuid(diskUsingUuid, @fsLetters)
+        #mount the new disks
+        self.mountFixedDrives
     end
 
     #unmount failed drives
@@ -153,6 +164,15 @@ class HpacucliModule < Module
        end
     end
 
+   #mount fixed drives relies on @fsLetters in failedDrivePartition method
+   def mountFixedDrives
+      @drivesReplaced.each do |d|
+	 puts "Mounting disk #{d}."
+	 `sudo mount /dev/#{@fsLetters.index(d)}1 /hadoop#{d}`
+      end
+   end
+
+
     #waiting for drives to be replaced
     def waitDriveReplace
        puts "Please replace: "
@@ -164,9 +184,9 @@ class HpacucliModule < Module
        while @doneInputtingDrives == false do
           print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers]: "
           @input = gets.chomp
-	  #check if number is between 1-12 if so put into @drivesReplaced array
-	  if @input.to_i > 12 || @input.to_i < 1 && @input != "x" then
-	     puts "Please enter a number between 1-12"
+	  #check if number is between 2-12 if so put into @drivesReplaced array
+	  if @input.to_i > 12 || @input.to_i < 2 && @input != "x" then
+	     puts "Please enter a number between 2-12"
 	  elsif @input.to_i < 12 || @input.to_i > 0
 	     @drivesReplaced.add(@input.to_i)
  	  end
@@ -251,15 +271,17 @@ class HpacucliModule < Module
      #partition failed drives based on @drivesReplaced
      def failedDrivePartition
 	#creating hash for filesystem letters
-	fsLetters = Hash.new
-	fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
+	@fsLetters = Hash.new
+	@fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
 	#parition failed drives
+=begin
 	@drivesReplaced.each do |p|
 	   puts "Paritioning drive #{p}..."
 	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mklabel gpt`
 	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
 	   `sudo mkfs.ext4 /dev/#{fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
 	end
+=end
      end
 
 
@@ -294,7 +316,8 @@ class HpacucliModule < Module
 	
 	end
      end
-end
 
+     
+end
 #test = HpacucliModule.new
 #test.driveReplacementProcess
