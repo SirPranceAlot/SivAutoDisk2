@@ -20,14 +20,15 @@ class HpacucliModule < Module
 
 #get a lits of failed drives, cleans the list up a little, gets the drive number, the hp drive number format, and the status message for the drive. Also calls checkFailedLogicalDrives
     def checkFailedDrives
+=begin
 	#----------------------------------------TEST
 	#test failed hpacucli failed output file
 	File.open("/home/slimvipuwat/SivAutoDisk2/logic/testFailedHpacucli").each do |line|
 	    @failedPhysicalDrives.push(line)
 	end
 	#-------------------------------------------TEST
-	
-	#@failedPhysicalDrives = `sudo hpacucli ctrl slot=0 pd all show status`
+=end
+	@failedPhysicalDrives = `sudo hpacucli ctrl slot=0 pd all show status`
 	@cleanFailedPhysicalDrives = Array.new
 	@failedPhysicalDrives.each do |e|
         @cleanFailedPhysicalDrives.push(e.chomp)
@@ -39,8 +40,9 @@ class HpacucliModule < Module
 	#get hp failed drive number format and store in @failedHpDriveNames
 	#get failed drive numbers and store it in @failedPhysicalDrives array
 	@cleanFailedPhysicalDrives.each do |d|
-	    if d =~ /\w+ (\S+) \(port 1I:box 1:bay (\d), \S* GB\): (\w+)/
-		if $3 == "Failed" || $3 == "Predictive Failure"
+	    if d =~ /\w+ (\S+) \(port 1I:box 1:bay (\d+), \S* GB\): (\w+)/
+                      
+		if $3 == "Failed" || $3 == "Predictive"
 		   @failedHpDriveAndStatus[:"#{$2}"] = $3
 		   @failedHpFormatDriveNames.push($1)
 		   @failedPhysicalDrives.push($2)
@@ -125,9 +127,9 @@ class HpacucliModule < Module
     #start driveReplacementProcess
     def driveReplacementProcess
 	#check datamine services
-	self.checkServices
+	#self.checkServices
 
- 	self.checkFailedDrives
+      	self.checkFailedDrives
 	#unmounting failed drives
         self.umountFailedDrives	
         #turn on LED for failed drives
@@ -137,15 +139,15 @@ class HpacucliModule < Module
         #confirm all physical drives are ok
         self.confirmPhysicalDrive
 	#reenabling failed logical drives
-	self.confirmLogicalDrive
+      	self.confirmLogicalDrive
 	#partition failed drives
-	self.failedDrivePartition
+      	self.failedDrivePartition
 	#instantiate fstabhandler
-	dmFstabHandler = DatamineFstabHandler.new
+      	dmFstabHandler = DatamineFstabHandler.new
 	#check if failed drives uses uuid
-	diskUsingUuid = dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
+      	diskUsingUuid = dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
 	#replace uuid if there are drives that use uuid
-	dmFstabHandler.replaceUuid(diskUsingUuid, @fsLetters)
+      	dmFstabHandler.replaceUuid(diskUsingUuid, @fsLetters)
         #mount the new disks
         self.mountFixedDrives
     end
@@ -246,17 +248,27 @@ class HpacucliModule < Module
         puts "Re-enabling any failed logical drives..."
 	#reenable failed LDs
 	cleanLogicalDrivesList.each do |l|
-	   if l =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	   if l =~ /\w+ (\d+) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
 	      `sudo hpacucli ctrl slot=0 ld #{$1} modify reenable forced` 
 	      puts "Logical drive: #{$1} re-enabled."
 	   end 
 	end
 	
+       #recreating LD status list
+       logicalDrivesList = Array.new
+       logicalDrivesList = `sudo hpacucli ctrl slot=0 ld all show status`
+       cleanLogicalDrivesList = Array.new
+       logicalDrivesList.each do |l|
+           cleanLogicalDrivesList.push(l.chomp)
+       end
+       cleanLogicalDrivesList.reject! {|e| e.empty?}
+
+
 	#confirm all logical drive OK
 	puts "Confirming all logical drives are OK..."
 	logicalDrivesOk = true
 	cleanLogicalDrivesList.each do |c|
-	   if c =~ /\w+ (\d) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
+	   if c =~ /\w+ (\d+) \(\S+ \S+ \S+ \S+ (\S+)/ && $2 == "Failed"
 	      logicalDrivesOk = false
 	   end
 	end
@@ -274,19 +286,19 @@ class HpacucliModule < Module
 	@fsLetters = Hash.new
 	@fsLetters = {"sda" => 1, "sdb" => 2, "sdc" => 3, "sdd" => 4, "sde" => 5, "sdf" => 6, "sdg" => 7, "sdh" => 8, "sdi" => 9, "sdj" => 10, "sdk" => 11, "sdl" => 12}
 	#parition failed drives
-=begin
+
 	@drivesReplaced.each do |p|
 	   puts "Paritioning drive #{p}..."
-	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mklabel gpt`
-	   `sudo parted /dev/#{fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
-	   `sudo mkfs.ext4 /dev/#{fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
+	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mklabel gpt`
+	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
+	   `sudo mkfs.ext4 /dev/#{@fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
 	end
-=end
+
      end
 
 
 
-     #check if datamine services are on
+     #check if datamine services are on (fix later)
      def checkServices
 	puts "Checking datamine services..."
 	#check datanode status
@@ -297,7 +309,8 @@ class HpacucliModule < Module
 	   puts "#{$1} service status is running, do you want to continue? y/n"
 	   input = gets
 	   input.chomp.downcase
-	   if input != "y" then
+	   puts input
+	   if input.eqls? "y" then
 	   abort("Aborting...")
 	   end
 	end
