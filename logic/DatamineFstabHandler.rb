@@ -19,7 +19,7 @@ class DatamineFstabHandler
    #check if fstab is using UUID for failed disks, returns the list of the disks that uses UUID
    def checkIfDiskUseUUID(failedDisks)
       puts "Checking if replaced disks uses UUID in /etc/fstab..."
-      File.open("/home/slimvipuwat/SivAutoDisk2/logic/fstabUuidTest").each do |line|
+      File.open("/etc/fstab").each do |line|
          failedDisks.each do |diskNumber|
              if line =~ /\S+ (\/hadoop#{diskNumber})/ then
 	        #check if matched disks uses UUID
@@ -41,6 +41,7 @@ class DatamineFstabHandler
 
    #collect new uuid for diskUsingUuid and put in diskUuid hash containing (diskNumber=newuuid), takes an array of the failed disk using UUID and the hash of the disk name and number on the server
    def replaceUuid(diskUsingUuid, diskHash)
+   if @listOfFailedDisksUsingUUID.length > 0 then
       #create hash to store disk UUID
       diskUuid = Hash.new
       #stores the disk number and the UUID belonging to that disk in diskUuid hash
@@ -59,8 +60,8 @@ class DatamineFstabHandler
       #start creating new updated fstab file here
 
       #open new and old file
-      oldFstab = File.open("/home/slimvipuwat/SivAutoDisk2/logic/fstabUuidTest", "r")
-      newFstab = File.new("/home/slimvipuwat/SivAutoDisk2/logic/fstabNewTest","w+")
+      oldFstab = File.open("/etc/fstab", "r")
+      newFstab = File.new("/etc/fstabNewCopy","w+")
       #line added logic to not place duplicate line if a blkid match has occured
       lineAdded = false
       #check each line of old file
@@ -82,12 +83,16 @@ class DatamineFstabHandler
          #reset lineAdded varible to false
          lineAdded = false
       end
+
+      #make a backup of original copy and move the new copy to update /etc/fstab
+      `sudo cp /etc/fstab /etc/fstabBackUp`
+      `sudo mv /etc/fstabNewCopy /etc/fstab`
+   end
    end
 
 
-
    
-              
+
 end
 
 

@@ -26,6 +26,7 @@ class HpacucliModule < Module
 	    @failedPhysicalDrives.push(line)
 	end
 	#-------------------------------------------TEST
+	
 	#@failedPhysicalDrives = `sudo hpacucli ctrl slot=0 pd all show status`
 	@cleanFailedPhysicalDrives = Array.new
 	@failedPhysicalDrives.each do |e|
@@ -78,14 +79,19 @@ class HpacucliModule < Module
     #display failed drive for use with menu
     def displayFailedDrives
 	self.checkFailedDrives
-        @failedHpDriveAndStatus.each do |drive, status|
-	   @displayOutput.push("Physical Drive: #{drive} Status: #{status}")
-	end
+	if @failedHpDriveAndStatus.length > 0 then
+           @failedHpDriveAndStatus.each do |drive, status|
+	      @displayOutput.push("Physical Drive: #{drive} Status: #{status}")
+	   end
 	
-	@failedLogicalDrives.each do |l|
-	   @displayOutput.push("Logical Drive: #{l} Status: Failed")
-	end
-       return @displayOutput
+	   @failedLogicalDrives.each do |l|
+	      @displayOutput.push("Logical Drive: #{l} Status: Failed")
+	   end
+           return @displayOutput
+	else
+	   #exit if no failed drives found 
+	   abort("No failed drives found.")
+        end
     end
 
     #getFailedPhysicalDrives for use with other classes
@@ -138,8 +144,10 @@ class HpacucliModule < Module
 	dmFstabHandler = DatamineFstabHandler.new
 	#check if failed drives uses uuid
 	diskUsingUuid = dmFstabHandler.checkIfDiskUseUUID(@drivesReplaced)
-	#replace uuid
+	#replace uuid if there are drives that use uuid
 	dmFstabHandler.replaceUuid(diskUsingUuid, @fsLetters)
+        #mount the new disks
+        self.mountFixedDrives
     end
 
     #unmount failed drives
@@ -156,6 +164,15 @@ class HpacucliModule < Module
        end
     end
 
+   #mount fixed drives relies on @fsLetters in failedDrivePartition method
+   def mountFixedDrives
+      @drivesReplaced.each do |d|
+	 puts "Mounting disk #{d}."
+	 `sudo mount /dev/#{@fsLetters.index(d)}1 /hadoop#{d}`
+      end
+   end
+
+
     #waiting for drives to be replaced
     def waitDriveReplace
        puts "Please replace: "
@@ -167,9 +184,9 @@ class HpacucliModule < Module
        while @doneInputtingDrives == false do
           print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers]: "
           @input = gets.chomp
-	  #check if number is between 1-12 if so put into @drivesReplaced array
-	  if @input.to_i > 12 || @input.to_i < 1 && @input != "x" then
-	     puts "Please enter a number between 1-12"
+	  #check if number is between 2-12 if so put into @drivesReplaced array
+	  if @input.to_i > 12 || @input.to_i < 2 && @input != "x" then
+	     puts "Please enter a number between 2-12"
 	  elsif @input.to_i < 12 || @input.to_i > 0
 	     @drivesReplaced.add(@input.to_i)
  	  end
@@ -299,7 +316,8 @@ class HpacucliModule < Module
 	
 	end
      end
-end
 
+     
+end
 #test = HpacucliModule.new
 #test.driveReplacementProcess
