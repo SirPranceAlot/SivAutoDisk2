@@ -126,8 +126,6 @@ class HpacucliModule < Module
 
     #start driveReplacementProcess
     def driveReplacementProcess
-	#check datamine services
-	#self.checkServices
 
       	self.checkFailedDrives
 	#unmounting failed drives
@@ -184,10 +182,10 @@ class HpacucliModule < Module
        #true/false to exit loop
        @doneInputtingDrives = false
        while @doneInputtingDrives == false do
-          print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers]: "
+          print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers] enter a to abort: "
           @input = gets.chomp
 	  #check if number is between 2-12 if so put into @drivesReplaced array
-	  if @input.to_i > 12 || @input.to_i < 2 && @input != "x" then
+	  if @input.to_i > 12 || @input.to_i < 2 && (@input != "x" || @input != "a") then
 	     puts "Please enter a number between 2-12"
 	  elsif @input.to_i < 12 || @input.to_i > 0
 	     @drivesReplaced.add(@input.to_i)
@@ -198,6 +196,9 @@ class HpacucliModule < Module
 	     @doneInputtingDrives = true
 	     @drivesReplaced.delete(0)
 	  end
+	  if @input == "a" then
+	     abort("Aborting...")
+	  end
        end
      end
 
@@ -205,6 +206,8 @@ class HpacucliModule < Module
      #makes sure all physical drives are "OK"
      def confirmPhysicalDrive
 	puts "Confirming all physical drives are OK..."
+	#wait for array to detect new drives
+	sleep(30)
 	physicalDrivesList = Array.new
         physicalDrivesList = `sudo hpacucli ctrl slot=0 pd all show status`	
 	cleanPhysicalDrivesList = Array.new
@@ -288,7 +291,7 @@ class HpacucliModule < Module
 	#parition failed drives
 
 	@drivesReplaced.each do |p|
-	   puts "Paritioning drive #{p}..."
+	   puts "Partitioning drive #{p}..."
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mklabel gpt`
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
 	   `sudo mkfs.ext4 /dev/#{@fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
@@ -297,38 +300,6 @@ class HpacucliModule < Module
      end
 
 
-
-     #check if datamine services are on (fix later)
-     def checkServices
-	puts "Checking datamine services..."
-	#check datanode status
-	datanodeStatus = `sudo service datanode status`
-	datanodeStatus.chomp
-	#ask to continue if service is started else abort
-	if datanodeStatus =~ /(\S+) \S+ \S+ \S+ \S+ STARTED/
-	   puts "#{$1} service status is running, do you want to continue? y/n"
-	   input = gets
-	   input.chomp.downcase
-	   puts input
-	   if input.eqls? "y" then
-	   abort("Aborting...")
-	   end
-	end
-
-	#check tasktracker status
-	tasktrackerStatus = `sudo service tasktracker status`
-	tasktrackerStatus.chomp
-	#ask to continue if service is started else abort
-	if tasktrackerStatus =~ /(\S+) \S+ \S+ \S+ \S+ STARTED/ then
-	   puts "#{$1} service status is running, do you want to continue? y/n"
-	   input = gets
-	   input.chomp.downcase
-	   if input != "y" then
-	   abort("Aborting...")
-	   end
-	
-	end
-     end
 
      
 end
