@@ -91,8 +91,8 @@ class HpacucliModule < Module
 	   end
            return @displayOutput
 	else
-	   #exit if no failed drives found 
-	   abort("No failed drives found.")
+	   #no failed drives found 
+	   puts "No failed drives found."
         end
     end
 
@@ -292,6 +292,7 @@ class HpacucliModule < Module
 
 	@drivesReplaced.each do |p|
 	   puts "Partitioning drive #{p}..."
+	   `sudo parted /dev/sd#{@fsLetters.index(p)} rm`
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mklabel gpt`
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
 	   `sudo mkfs.ext4 /dev/#{@fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
