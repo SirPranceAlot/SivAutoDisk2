@@ -129,7 +129,7 @@ class HpacucliModule < Module
 
       	self.checkFailedDrives
 	#unmounting failed drives
-        self.umountFailedDrives	
+        #self.umountFailedDrives	
         #turn on LED for failed drives
         self.turnOnFailedDrivesLED
 	#waiting for drive replacement confirmation
@@ -185,7 +185,7 @@ class HpacucliModule < Module
           print "Once the drive(s) have been replaced, please enter the drive number of the replaced drive(e.g if you replaced drive 3 then enter 3) [enter x to exit when you're done inputting drive numbers] enter a to abort: "
           @input = gets.chomp
 	  #check if number is between 2-12 if so put into @drivesReplaced array
-	  if @input.to_i > 12 || @input.to_i < 2 && (@input != "x" || @input != "a") then
+	  if @input.to_i > 12 || @input.to_i < 2 && @input != "x" &&  @input != "a" then
 	     puts "Please enter a number between 2-12"
 	  elsif @input.to_i < 12 || @input.to_i > 0
 	     @drivesReplaced.add(@input.to_i)
