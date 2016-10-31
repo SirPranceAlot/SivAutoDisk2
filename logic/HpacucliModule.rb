@@ -291,8 +291,10 @@ class HpacucliModule < Module
 	#parition failed drives
 
 	@drivesReplaced.each do |p|
+	   #puts "Wiping disk #{p}..."
+	   #`sudo dd if=/dev/zero of=/dev/sd#{@fsLetters.index(p)} bs=512 count=1 conv=notrunc`
 	   puts "Partitioning drive #{p}..."
-	   `sudo parted /dev/sd#{@fsLetters.index(p)} rm`
+
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mklabel gpt`
 	   `sudo parted /dev/#{@fsLetters.index(p)} --s -- mkpart primary 2048s 100%`
 	   `sudo mkfs.ext4 /dev/#{@fsLetters.index(p)}1 -m 0 -L /hadoop#{p}` 
